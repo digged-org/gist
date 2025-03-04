@@ -1,0 +1,109 @@
+version: '3'
+
+vars:
+  GOLANG_MIGRATE_VERSION: v4.18.2
+  MIGRATE_BINARY_FILE: ./bin/migrate-{{.GOLANG_MIGRATE_VERSION}}
+  MIGRATION_PATH: ./migrations
+  MIGRATIONS_TO_RUN: 1
+
+tasks:
+  download:
+    name: Download
+    description: Download the migrate binary
+    cmds:
+      - curl -L https://github.com/golang-migrate/migrate/releases/download/{{.GOLANG_MIGRATE_VERSION}}/migrate.{{OS}}-{{ARCH}}.tar.gz | tar xvz
+      - mv migrate {{.MIGRATE_BINARY_FILE}}
+    generates:
+      - "{{.MIGRATE_BINARY_FILE}}"
+  
+  create:
+    name: Create
+    description: Create a new migration
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} create -ext sql -dir {{.MIGRATION_PATH}} {{.CLI_ARGS}}"
+    depends:
+      - download
+
+  goto:
+    name: Goto
+    description: Migrate to specific version
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} goto {{.CLI_ARGS}}"
+    depends:
+      - download
+  
+  up:
+    name: Up
+    description: Up the database
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+        - MIGRATIONS_TO_RUN
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} up {{.MIGRATIONS_TO_RUN}}"
+    depends:
+      - download
+
+  down:
+    name: Down
+    description: Down the database
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+        - MIGRATIONS_TO_RUN
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} down {{.MIGRATIONS_TO_RUN}}"
+    depends:
+      - download
+
+  drop:
+    name: Drop
+    description: Drop everything inside database
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} drop"
+    depends:
+      - download
+
+  force:
+    name: Force
+    description: Set version but don't run migration
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} force {{.CLI_ARGS}}"
+    depends:
+      - download
+
+  version:
+    name: Version
+    description: Print current migration version
+    requires:
+      vars:
+        - MIGRATE_BINARY_FILE
+        - MIGRATION_PATH
+        - DB_URL
+    cmds:
+      - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} version"
+    depends:
+      - download
