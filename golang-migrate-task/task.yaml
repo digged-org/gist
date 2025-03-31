@@ -8,102 +8,90 @@ vars:
 
 tasks:
   download:
-    name: Download
-    description: Download the migrate binary
+    desc: Download the golang-migrate binary if not present
     cmds:
-      - curl -L https://github.com/golang-migrate/migrate/releases/download/{{.GOLANG_MIGRATE_VERSION}}/migrate.{{OS}}-{{ARCH}}.tar.gz | tar xvz
-      - mv migrate {{.MIGRATE_BINARY_FILE}}
+      - mkdir -p ./bin
+      - |
+        if [ ! -f {{.MIGRATE_BINARY_FILE}} ]; then
+          echo "Downloading migrate binary..."
+          curl -L https://github.com/golang-migrate/migrate/releases/download/{{.GOLANG_MIGRATE_VERSION}}/migrate.{{OS}}-{{ARCH}}.tar.gz | tar xvz
+          mv migrate {{.MIGRATE_BINARY_FILE}}
+          chmod +x {{.MIGRATE_BINARY_FILE}}
+        else
+          echo "Migrate binary already exists"
+        fi
+    sources:
+      - "{{.MIGRATE_BINARY_FILE}}"
     generates:
       - "{{.MIGRATE_BINARY_FILE}}"
   
   create:
-    name: Create
-    description: Create a new migration
+    desc: Create a new migration file with up/down SQL scripts
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} create -ext sql -dir {{.MIGRATION_PATH}} {{.CLI_ARGS}}"
-    depends:
-      - download
 
   goto:
-    name: Goto
-    description: Migrate to specific version
+    desc: Migrate database to a specific version
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} goto {{.CLI_ARGS}}"
-    depends:
-      - download
   
   up:
-    name: Up
-    description: Up the database
+    desc: Apply migrations to upgrade database schema
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
         - MIGRATIONS_TO_RUN
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} up {{.MIGRATIONS_TO_RUN}}"
-    depends:
-      - download
 
   down:
-    name: Down
-    description: Down the database
+    desc: Roll back migrations to downgrade database schema
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
         - MIGRATIONS_TO_RUN
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} down {{.MIGRATIONS_TO_RUN}}"
-    depends:
-      - download
 
   drop:
-    name: Drop
-    description: Drop everything inside database
+    desc: Drop all objects in the database (tables, indexes, etc.)
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} drop"
-    depends:
-      - download
 
   force:
-    name: Force
-    description: Set version but don't run migration
+    desc: Set migration version without running migrations (for fixing broken states)
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} force {{.CLI_ARGS}}"
-    depends:
-      - download
 
   version:
-    name: Version
-    description: Print current migration version
+    desc: Show current migration version of the database
     requires:
       vars:
-        - MIGRATE_BINARY_FILE
         - MIGRATION_PATH
         - DB_URL
     cmds:
+      - task: download
       - "{{.MIGRATE_BINARY_FILE}} -path {{.MIGRATION_PATH}} -database {{.DB_URL}} version"
-    depends:
-      - download
